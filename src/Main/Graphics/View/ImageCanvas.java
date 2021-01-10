@@ -1,4 +1,4 @@
-package Graphics.View;
+package Main.Graphics.View;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -80,7 +80,7 @@ public class ImageCanvas extends Canvas
     // override it to redraw your content
 
     public void resized() {
-        // override me in your class that extends Graphics.View.ImageCanvas!
+        // override me in your class that extends Main.Graphics.View.ImageCanvas!
     }
 
 

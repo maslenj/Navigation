@@ -1,4 +1,4 @@
-package Graphics;
+package Main.Graphics;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -6,7 +6,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import Graphics.View.ViewCanvas;
+import Main.Graphics.View.ViewCanvas;
 public class ControlPanel extends JPanel {
     public ViewCanvas view;
     private JComboBox<String> chooseBox;

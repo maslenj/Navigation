@@ -1,6 +1,8 @@
-import Graphics.ControlPanel;
-import Graphics.MainWindow;
-import Graphics.View.ViewCanvas;
+package Main;
+
+import Main.Graphics.ControlPanel;
+import Main.Graphics.MainWindow;
+import Main.Graphics.View.ViewCanvas;
 
 public class Controller {
     public static void main(String[] args) {

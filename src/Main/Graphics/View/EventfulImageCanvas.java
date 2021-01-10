@@ -1,4 +1,4 @@
-package Graphics.View;
+package Main.Graphics.View;
 
 import java.awt.event.*;
 
