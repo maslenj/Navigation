@@ -7,7 +7,7 @@ import Main.Navigator;
 
 public class ViewCanvas extends EventfulImageCanvas implements MouseListener {
 
-    Navigator nav = new Navigator();
+    public Navigator navigator = new Navigator();
 
     public ViewCanvas(int width, int height) {
         super(width, height);
@@ -22,7 +22,7 @@ public class ViewCanvas extends EventfulImageCanvas implements MouseListener {
         int height = getHeight();
         Graphics2D pen = getPen();
         clear();
-        nav.draw(pen, width, height);
+        navigator.draw(pen, width, height);
         display();
     }
 }

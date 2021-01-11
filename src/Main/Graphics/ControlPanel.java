@@ -5,8 +5,10 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Objects;
 
 import Main.Graphics.View.ViewCanvas;
+
 public class ControlPanel extends JPanel {
     public ViewCanvas view;
     private JComboBox<String> chooseBox;
@@ -75,6 +77,9 @@ public class ControlPanel extends JPanel {
     class ChooseBoxListener implements ActionListener{
         public void actionPerformed(ActionEvent event){
             // Choose
+            System.out.println(Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
+            view.navigator.readFiles("RoadData/" + Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
+            view.display();
         }
     }
 }
