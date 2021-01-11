@@ -17,7 +17,7 @@ public class ViewCanvas extends EventfulImageCanvas implements MouseListener {
         draw();
     }
 
-    void draw() {
+    public void draw() {
         int width = getWidth();
         int height = getHeight();
         Graphics2D pen = getPen();

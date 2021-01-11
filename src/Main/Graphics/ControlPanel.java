@@ -34,10 +34,6 @@ public class ControlPanel extends JPanel {
         chooseBox.addItem("Catlin1-allroads");
         chooseBox.addItem("Catlin2-allroads");
         chooseBox.addItem("Portland1-primary");
-        chooseBox.addItem("Portland1-secondary");
-        chooseBox.addItem("Oregon-primary");
-        chooseBox.addItem("Oregon-secondary");
-        chooseBox.addItem("Oregon-allroads");
         chooseBox.addActionListener(new ChooseBoxListener());
         choosePanel.add(chooseBox);
 
@@ -76,10 +72,9 @@ public class ControlPanel extends JPanel {
 
     class ChooseBoxListener implements ActionListener{
         public void actionPerformed(ActionEvent event){
-            // Choose
             System.out.println(Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
             view.navigator.readFiles("RoadData/" + Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
-            view.display();
+            view.draw();
         }
     }
 }
