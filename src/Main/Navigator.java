@@ -1,15 +1,19 @@
 package Main;
 
+import Main.Graphics.View.ViewCanvas;
 import java.awt.*;
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
 public class Navigator {
+    // Need to have access to a ViewCanvas for animation
+    ViewCanvas viewCanvas;
+
+    // Need to have a links map for animation
+    HashMap<Integer, Connection> connectionHashMap = new HashMap<>();
+
     // something to store the graph (for doing caculations and stuff)
     HashMap<Integer, Node> nodes = new HashMap<>();
 
@@ -20,8 +24,27 @@ public class Navigator {
     Node start;
     Node end;
 
-    public Navigator() {
+    boolean pathFound = false;
+
+    // screen specific data
+    double minLat;
+    double maxLat;
+    double minLong;
+    double maxLong;
+    double scaleX;
+    double scaleY;
+
+    public Navigator(ViewCanvas viewCanvas) {
         readFiles("RoadData/Catlin1-allroads");
+        this.viewCanvas = viewCanvas;
+    }
+
+    public double getDistance() {
+        return (end != null)? end.distance: 0.0;
+    }
+
+    public int getNumNodes() {
+        return (end != null)? end.path.size(): 0;
     }
 
     public void readFiles(String folder) {
@@ -58,9 +81,13 @@ public class Navigator {
                 String linkLabel = inStream.readUTF();
                 double length = inStream.readDouble();
                 byte way = inStream.readByte();
-                nodes.get(firstNodeID).connections.add(new Connection(linkID, firstNodeID, lastNodeID, length));
+                Connection c = new Connection(linkID, firstNodeID, lastNodeID, length);
+                nodes.get(firstNodeID).connections.add(c);
+                connectionHashMap.put(linkID, c);
                 if (way == 2) {
-                    nodes.get(lastNodeID).connections.add(new Connection(-linkID, lastNodeID, firstNodeID, length));
+                    Connection inverse = new Connection(-linkID, lastNodeID, firstNodeID, length);
+                    nodes.get(lastNodeID).connections.add(inverse);
+                    connectionHashMap.put(-linkID, inverse);
                 }
             }
             inStream.close();
@@ -91,29 +118,16 @@ public class Navigator {
     }
 
     public void draw(Graphics2D pen, int screenWidth, int screenHeight) {
-        // find the max and min latitudes and longitudes
-        // use these to find the corner and scale
-        double minLat = 1000;
-        double maxLat = -1000;
-        double minLong = 1000;
-        double maxLong = -1000;
-        for (int linkID: waypointsMap.keySet()) {
-            for (Waypoint waypoint: waypointsMap.get(linkID)) {
-                minLat = Math.min(minLat, waypoint.latitude);
-                maxLat = Math.max(maxLat, waypoint.latitude);
-                minLong = Math.min(minLong, waypoint.longitude);
-                maxLong = Math.max(maxLong, waypoint.longitude);
-            }
-        }
-        double scaleX = screenWidth / (maxLong - minLong);
-        double scaleY = screenHeight / (maxLat - minLat);
+        updateScreen(screenWidth, screenHeight);
 
         pen.setColor(Color.BLACK);
         for (int linkID: waypointsMap.keySet()) {
-            if (end != null && !end.path.isEmpty()) {
+            if (pathFound) {
                 if (end.path.contains(linkID) || end.path.contains(-linkID)) {
+                    pen.setStroke(new BasicStroke(3));
                     pen.setColor(Color.RED);
                 } else {
+                    pen.setStroke(new BasicStroke(1));
                     pen.setColor(Color.BLACK);
                 }
             }
@@ -131,8 +145,9 @@ public class Navigator {
             }
         }
 
+        pen.setStroke(new BasicStroke(4));
         if (start != null) {
-            pen.setColor(Color.GREEN);
+            pen.setColor(Color.BLUE);
             pen.drawOval(convertCoord(start.longitude, scaleX, minLong, screenWidth) - 5,
                     convertCoord(start.latitude, scaleY, minLat, screenHeight) - 5,
                     10, 10);
@@ -145,23 +160,24 @@ public class Navigator {
         }
     }
 
-    public void addPoint(int x, int y, int screenWidth, int screenHeight) {
-        // find the max and min latitudes and longitudes
-        // use these to find the corner and scale
-        double minLat = 1000;
-        double maxLat = -1000;
-        double minLong = 1000;
-        double maxLong = -1000;
-        for (int linkID: waypointsMap.keySet()) {
-            for (Waypoint waypoint: waypointsMap.get(linkID)) {
-                minLat = Math.min(minLat, waypoint.latitude);
-                maxLat = Math.max(maxLat, waypoint.latitude);
-                minLong = Math.min(minLong, waypoint.longitude);
-                maxLong = Math.max(maxLong, waypoint.longitude);
-            }
+    public void highlight(Graphics2D pen, int screenWidth, int screenHeight, int linkID, Color color) {
+        pen.setStroke(new BasicStroke(3));
+        pen.setColor(color);
+        ArrayList<Waypoint> waypoints = waypointsMap.get(linkID);
+        Waypoint prevWaypoint = waypoints.get(0);
+        for (int i = 1; i < waypoints.size(); i ++) {
+            Waypoint waypoint = waypoints.get(i);
+            int x1 = convertCoord(prevWaypoint.longitude, scaleX, minLong, screenWidth);
+            int y1 = convertCoord(prevWaypoint.latitude, scaleY, minLat, screenHeight);
+            int x2 = convertCoord(waypoint.longitude, scaleX, minLong, screenWidth);
+            int y2 = convertCoord(waypoint.latitude, scaleY, minLat, screenHeight);
+            pen.drawLine(x1,y1,x2,y2);
+            prevWaypoint = waypoints.get(i);
         }
-        double scaleX = screenWidth / (maxLong - minLong);
-        double scaleY = screenHeight / (maxLat - minLat);
+    }
+
+    public void addPoint(int x, int y, int screenWidth, int screenHeight) {
+        updateScreen(screenWidth, screenHeight);
 
         // convert x and y to long and lat
         // = ((dim - p) / scale) + min
@@ -193,6 +209,8 @@ public class Navigator {
             // set all distances to infinity
             for (Node n: nodes.values()) {
                 n.distance = Double.MAX_VALUE;
+                n.path = new ArrayList<>();
+                n.visited = false;
             }
             start.distance = 0;
             start.visited = true;
@@ -207,16 +225,13 @@ public class Navigator {
             }
 
             // do dijkstra's
-            while (!frontier.isEmpty()) {
+            while (!end.visited && !frontier.isEmpty()) {
                 Node chosen = frontier.poll();
                 chosen.visited = true;
                 // add new nodes to frontier
                 for (Connection c: chosen.connections) {
                     Node n = nodes.get(c.endNode);
                     if (chosen.distance + c.length < n.distance) {
-                        if (n == end) {
-                            System.out.println("happens");
-                        }
                         n.distance = chosen.distance + c.length;
                         n.path = new ArrayList<>();
                         n.path.addAll(chosen.path);
@@ -224,11 +239,51 @@ public class Navigator {
                     }
                     if (!n.visited && !frontier.contains(n)) frontier.add(n);
                 }
-            }
 
-            System.out.println(end.distance);
-            System.out.println(end.path);
+                // if animating, redraw graph
+                if (viewCanvas.animating) {
+                    viewCanvas.highlight(chosen.path.get(chosen.path.size() - 1), Color.MAGENTA);
+                }
+            }
         }
+        viewCanvas.draw();
+        // path animation
+        for (int linkID: end.path) {
+            viewCanvas.highlight(linkID, Color.RED);
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        pathFound = true;
+    }
+
+    public void clearPath() {
+        pathFound = false;
+        start = null;
+        end = null;
+        for (Node n: nodes.values()) {
+            n.visited = false;
+            n.path = new ArrayList<>();
+        }
+    }
+
+    private void updateScreen(int screenWidth, int screenHeight) {
+        minLat = 1000;
+        maxLat = -1000;
+        minLong = 1000;
+        maxLong = -1000;
+        for (int linkID: waypointsMap.keySet()) {
+            for (Waypoint waypoint: waypointsMap.get(linkID)) {
+                minLat = Math.min(minLat, waypoint.latitude);
+                maxLat = Math.max(maxLat, waypoint.latitude);
+                minLong = Math.min(minLong, waypoint.longitude);
+                maxLong = Math.max(maxLong, waypoint.longitude);
+            }
+        }
+        scaleX = screenWidth / (maxLong - minLong);
+        scaleY = screenHeight / (maxLat - minLat);
     }
 
     private int convertCoord(double coord, double scale, double min, double dim) {
@@ -250,7 +305,7 @@ public class Navigator {
         }
     }
 
-    class Node implements Comparable<Node>{
+    static class Node implements Comparable<Node>{
         int id;
         double longitude;
         double latitude;
@@ -277,7 +332,7 @@ public class Navigator {
         }
     }
 
-    class Connection {
+    static class Connection {
         int id;
         int startNode;
         int endNode;

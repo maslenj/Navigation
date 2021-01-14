@@ -1,6 +1,5 @@
 package Main.Graphics;
 
-import javax.management.InvalidAttributeValueException;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -12,9 +11,9 @@ import Main.Graphics.View.ViewCanvas;
 
 public class ControlPanel extends JPanel {
     public ViewCanvas view;
-    private JComboBox<String> chooseBox;
-    private JLabel distance;
-    private JLabel numNodes;
+    private final JComboBox<String> chooseBox;
+    private final JLabel distanceLabel;
+    private final JLabel numNodesLabel;
 
     public ControlPanel(ViewCanvas view) {
         this.view = view;
@@ -46,10 +45,10 @@ public class ControlPanel extends JPanel {
         resultsPanel.setLayout(new FlowLayout());
         resultsPanel.setBorder(new TitledBorder("Results"));
 
-        distance = new JLabel("Distance: 0.0");
-        numNodes = new JLabel("Number of Nodes: 0");
-        resultsPanel.add(distance);
-        resultsPanel.add(numNodes);
+        distanceLabel = new JLabel("Distance: 0.0");
+        numNodesLabel = new JLabel("Number of Nodes: 0");
+        resultsPanel.add(distanceLabel);
+        resultsPanel.add(numNodesLabel);
 
         setLayout(new BorderLayout());
         add(actionPanel, BorderLayout.EAST);
@@ -57,25 +56,33 @@ public class ControlPanel extends JPanel {
         add(resultsPanel, BorderLayout.CENTER);
     }
 
+    public void updateLabels() {
+        distanceLabel.setText("Distance: " + Math.round(view.navigator.getDistance() * 100) / 100.0);
+        numNodesLabel.setText("Number of Nodes: " + view.navigator.getNumNodes());
+    }
+
     class FindPathButtonListener implements ActionListener
     {
         public void actionPerformed(ActionEvent event)
         {
             view.navigator.findPath();
+            updateLabels();
             view.draw();
         }
     }
 
     class clearButtonListener implements ActionListener{
         public void actionPerformed(ActionEvent event){
-            // Clear screen
+            view.navigator.clearPath();
+            updateLabels();
+            view.draw();
         }
     }
 
     class ChooseBoxListener implements ActionListener{
         public void actionPerformed(ActionEvent event){
-            System.out.println(Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
             view.navigator.readFiles("RoadData/" + Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
+            view.navigator.clearPath();
             view.draw();
         }
     }
