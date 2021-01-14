@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.PriorityQueue;
 
 public class Navigator {
     // something to store the graph (for doing caculations and stuff)
@@ -14,6 +15,10 @@ public class Navigator {
 
     // waypoints: each one correlates to an edge
     HashMap<Integer, ArrayList<Waypoint>> waypointsMap = new HashMap<>();
+
+    // start and end points (for users to add)
+    Node start;
+    Node end;
 
     public Navigator() {
         readFiles("RoadData/Catlin1-allroads");
@@ -105,6 +110,14 @@ public class Navigator {
 
         pen.setColor(Color.BLACK);
         for (int linkID: waypointsMap.keySet()) {
+            if (end != null && !end.path.isEmpty()) {
+                if (end.path.contains(linkID) || end.path.contains(-linkID)) {
+                    pen.setColor(Color.RED);
+                } else {
+                    pen.setColor(Color.BLACK);
+                }
+            }
+
             ArrayList<Waypoint> waypoints = waypointsMap.get(linkID);
             Waypoint prevWaypoint = waypoints.get(0);
             for (int i = 1; i < waypoints.size(); i ++) {
@@ -116,6 +129,105 @@ public class Navigator {
                 pen.drawLine(x1,y1,x2,y2);
                 prevWaypoint = waypoints.get(i);
             }
+        }
+
+        if (start != null) {
+            pen.setColor(Color.GREEN);
+            pen.drawOval(convertCoord(start.longitude, scaleX, minLong, screenWidth) - 5,
+                    convertCoord(start.latitude, scaleY, minLat, screenHeight) - 5,
+                    10, 10);
+        }
+        if (end != null) {
+            pen.setColor(Color.RED);
+            pen.drawOval(convertCoord(end.longitude, scaleX, minLong, screenWidth) - 5,
+                    convertCoord(end.latitude, scaleY, minLat, screenHeight) - 5,
+                    10, 10);
+        }
+    }
+
+    public void addPoint(int x, int y, int screenWidth, int screenHeight) {
+        // find the max and min latitudes and longitudes
+        // use these to find the corner and scale
+        double minLat = 1000;
+        double maxLat = -1000;
+        double minLong = 1000;
+        double maxLong = -1000;
+        for (int linkID: waypointsMap.keySet()) {
+            for (Waypoint waypoint: waypointsMap.get(linkID)) {
+                minLat = Math.min(minLat, waypoint.latitude);
+                maxLat = Math.max(maxLat, waypoint.latitude);
+                minLong = Math.min(minLong, waypoint.longitude);
+                maxLong = Math.max(maxLong, waypoint.longitude);
+            }
+        }
+        double scaleX = screenWidth / (maxLong - minLong);
+        double scaleY = screenHeight / (maxLat - minLat);
+
+        // convert x and y to long and lat
+        // = ((dim - p) / scale) + min
+        double longitude = ((screenWidth - x) / scaleX) + minLong;
+        double latitude = ((screenHeight - y) / scaleY) + minLat;
+
+        // find closest node
+        double closestDistance = 1000;
+        Node closest = null;
+        for (Node n: nodes.values()) {
+            double distance = Math.sqrt(Math.pow(n.longitude - longitude, 2) + Math.pow(n.latitude - latitude, 2));
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = n;
+            }
+        }
+
+        if (start == null) {
+            start = closest;
+        } else {
+            end = closest;
+        }
+
+    }
+
+    public void findPath() {
+        // make sure start and end nodes are set
+        if (start != null && end != null) {
+            // set all distances to infinity
+            for (Node n: nodes.values()) {
+                n.distance = Double.MAX_VALUE;
+            }
+            start.distance = 0;
+            start.visited = true;
+
+            // initialize frontier
+            PriorityQueue<Node> frontier = new PriorityQueue<>();
+            for (Connection c: start.connections) {
+                Node n = nodes.get(c.endNode);
+                n.distance = c.length;
+                n.path.add(c.id);
+                frontier.add(n);
+            }
+
+            // do dijkstra's
+            while (!frontier.isEmpty()) {
+                Node chosen = frontier.poll();
+                chosen.visited = true;
+                // add new nodes to frontier
+                for (Connection c: chosen.connections) {
+                    Node n = nodes.get(c.endNode);
+                    if (chosen.distance + c.length < n.distance) {
+                        if (n == end) {
+                            System.out.println("happens");
+                        }
+                        n.distance = chosen.distance + c.length;
+                        n.path = new ArrayList<>();
+                        n.path.addAll(chosen.path);
+                        n.path.add(c.id);
+                    }
+                    if (!n.visited && !frontier.contains(n)) frontier.add(n);
+                }
+            }
+
+            System.out.println(end.distance);
+            System.out.println(end.path);
         }
     }
 
@@ -138,16 +250,30 @@ public class Navigator {
         }
     }
 
-    class Node {
+    class Node implements Comparable<Node>{
         int id;
         double longitude;
         double latitude;
+        double distance;
+        boolean visited;
+        ArrayList<Integer> path = new ArrayList<>();
         ArrayList<Connection> connections = new ArrayList<>();
 
         Node(int id, double longitude, double latitude) {
             this.id = id;
             this.longitude = longitude;
             this.latitude = latitude;
+        }
+
+        @Override
+        public int compareTo(Node n) {
+            if (this.distance - n.distance > 0) {
+                return 1;
+            } else if (this.distance - n.distance < 0)  {
+                return -1;
+            } else {
+                return 0;
+            }
         }
     }
 

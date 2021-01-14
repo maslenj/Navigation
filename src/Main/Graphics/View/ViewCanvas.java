@@ -1,6 +1,7 @@
 package Main.Graphics.View;
 
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
 import Main.Navigator;
@@ -14,6 +15,12 @@ public class ViewCanvas extends EventfulImageCanvas implements MouseListener {
     }
 
     public void resized() {
+        draw();
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent event) {
+        navigator.addPoint(event.getX(), event.getY(), getWidth(), getHeight());
         draw();
     }
 

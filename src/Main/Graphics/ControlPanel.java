@@ -1,5 +1,6 @@
 package Main.Graphics;
 
+import javax.management.InvalidAttributeValueException;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -60,7 +61,8 @@ public class ControlPanel extends JPanel {
     {
         public void actionPerformed(ActionEvent event)
         {
-            // Find the path
+            view.navigator.findPath();
+            view.draw();
         }
     }
 
