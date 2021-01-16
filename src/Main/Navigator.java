@@ -1,6 +1,7 @@
 package Main;
 
 import Main.Graphics.View.ViewCanvas;
+
 import java.awt.*;
 import java.io.*;
 import java.util.ArrayList;
@@ -204,8 +205,11 @@ public class Navigator {
     }
 
     public void findPath() {
+        pathFound = false;
         // make sure start and end nodes are set
         if (start != null && end != null) {
+            // choose which algorithm to use
+
             // set all distances to infinity
             for (Node n: nodes.values()) {
                 n.distance = Double.MAX_VALUE;
@@ -214,7 +218,6 @@ public class Navigator {
             }
             start.distance = 0;
             start.visited = true;
-
             // initialize frontier
             PriorityQueue<Node> frontier = new PriorityQueue<>();
             for (Connection c: start.connections) {
@@ -223,7 +226,6 @@ public class Navigator {
                 n.path.add(c.id);
                 frontier.add(n);
             }
-
             // do dijkstra's
             while (!end.visited && !frontier.isEmpty()) {
                 Node chosen = frontier.poll();
@@ -239,24 +241,25 @@ public class Navigator {
                     }
                     if (!n.visited && !frontier.contains(n)) frontier.add(n);
                 }
-
                 // if animating, redraw graph
                 if (viewCanvas.animating) {
                     viewCanvas.highlight(chosen.path.get(chosen.path.size() - 1), Color.MAGENTA);
                 }
             }
-        }
-        viewCanvas.draw();
-        // path animation
-        for (int linkID: end.path) {
-            viewCanvas.highlight(linkID, Color.RED);
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+
+
+            viewCanvas.draw();
+            // path animation
+            for (int linkID: end.path) {
+                viewCanvas.highlight(linkID, Color.RED);
+                try {
+                    Thread.sleep(25);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            pathFound = true;
         }
-        pathFound = true;
     }
 
     public void clearPath() {

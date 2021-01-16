@@ -12,6 +12,7 @@ import Main.Graphics.View.ViewCanvas;
 public class ControlPanel extends JPanel {
     public ViewCanvas view;
     private final JComboBox<String> chooseBox;
+    private final JComboBox<String> algorithmBox;
     private final JLabel distanceLabel;
     private final JLabel numNodesLabel;
 
@@ -21,6 +22,11 @@ public class ControlPanel extends JPanel {
         JPanel actionPanel = new JPanel();
         actionPanel.setLayout(new FlowLayout());
         actionPanel.setBorder(new TitledBorder("Path Finding"));
+
+        algorithmBox = new JComboBox<>();
+        algorithmBox.addItem("Dijkstra's");
+        algorithmBox.addItem("A*");
+        actionPanel.add(algorithmBox);
 
         JButton findPathButton = new JButton("Find Path");
         findPathButton.addActionListener(new FindPathButtonListener());
