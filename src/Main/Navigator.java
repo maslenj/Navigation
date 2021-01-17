@@ -347,7 +347,7 @@ public class Navigator {
     }
 
     private double h(Node n) {
-        return 69 * Math.sqrt(Math.pow(n.latitude - end.latitude, 2) + Math.pow(n.longitude - end.longitude, 2));
+        return 60 * Math.sqrt(Math.pow(n.latitude - end.latitude, 2) + Math.pow(n.longitude - end.longitude, 2));
     }
 
     static class Waypoint {
