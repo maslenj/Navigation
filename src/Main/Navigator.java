@@ -5,6 +5,7 @@ import Main.Graphics.View.ViewCanvas;
 import java.awt.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
@@ -25,7 +26,11 @@ public class Navigator {
     Node start;
     Node end;
 
+    // For choosing whether to display path
     boolean pathFound = false;
+
+    // For choosing what algorithm to use
+    String algorithmChoice = "Dijkstra's";
 
     // screen specific data
     double minLat;
@@ -206,44 +211,83 @@ public class Navigator {
 
     public void findPath() {
         pathFound = false;
+        viewCanvas.draw();
         // make sure start and end nodes are set
         if (start != null && end != null) {
             // choose which algorithm to use
-
-            // set all distances to infinity
-            for (Node n: nodes.values()) {
-                n.distance = Double.MAX_VALUE;
-                n.path = new ArrayList<>();
-                n.visited = false;
-            }
-            start.distance = 0;
-            start.visited = true;
-            // initialize frontier
-            PriorityQueue<Node> frontier = new PriorityQueue<>();
-            for (Connection c: start.connections) {
-                Node n = nodes.get(c.endNode);
-                n.distance = c.length;
-                n.path.add(c.id);
-                frontier.add(n);
-            }
-            // do dijkstra's
-            while (!end.visited && !frontier.isEmpty()) {
-                Node chosen = frontier.poll();
-                chosen.visited = true;
-                // add new nodes to frontier
-                for (Connection c: chosen.connections) {
-                    Node n = nodes.get(c.endNode);
-                    if (chosen.distance + c.length < n.distance) {
-                        n.distance = chosen.distance + c.length;
-                        n.path = new ArrayList<>();
-                        n.path.addAll(chosen.path);
-                        n.path.add(c.id);
-                    }
-                    if (!n.visited && !frontier.contains(n)) frontier.add(n);
+            if (algorithmChoice.equals("Dijkstra's")) {
+                // set all distances to infinity
+                for (Node n: nodes.values()) {
+                    n.distance = Double.MAX_VALUE;
+                    n.path = new ArrayList<>();
+                    n.visited = false;
                 }
-                // if animating, redraw graph
-                if (viewCanvas.animating) {
-                    viewCanvas.highlight(chosen.path.get(chosen.path.size() - 1), Color.MAGENTA);
+                start.distance = 0;
+                start.visited = true;
+                // initialize frontier
+                PriorityQueue<Node> frontier = new PriorityQueue<>(Comparator.comparingDouble(node -> node.distance));
+                for (Connection c: start.connections) {
+                    Node n = nodes.get(c.endNode);
+                    n.distance = c.length;
+                    n.path.add(c.id);
+                    frontier.add(n);
+                }
+                // do dijkstra's
+                while (!end.visited && !frontier.isEmpty()) {
+                    Node chosen = frontier.poll();
+                    chosen.visited = true;
+                    // add new nodes to frontier
+                    for (Connection c: chosen.connections) {
+                        Node n = nodes.get(c.endNode);
+                        if (chosen.distance + c.length < n.distance) {
+                            n.distance = chosen.distance + c.length;
+                            n.path = new ArrayList<>();
+                            n.path.addAll(chosen.path);
+                            n.path.add(c.id);
+                        }
+                        if (!n.visited && !frontier.contains(n)) frontier.add(n);
+                    }
+                    // if animating, highlight connection
+                    if (viewCanvas.animating) {
+                        viewCanvas.highlight(chosen.path.get(chosen.path.size() - 1), Color.MAGENTA);
+                    }
+                }
+            } else {
+                // perform A* search
+                for (Node node: nodes.values()) {
+                    node.gScore = Double.POSITIVE_INFINITY;
+                    node.fScore = Double.POSITIVE_INFINITY;
+                }
+
+                PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(node -> node.fScore));
+                open.add(start);
+                start.gScore = 0;
+                start.fScore = h(start);
+
+                while (!open.isEmpty()) {
+                    Node currentNode = open.poll();
+                    if (currentNode == end) break;
+                    for (Connection c: currentNode.connections) {
+                        Node neighbor = nodes.get(c.endNode);
+                        double newGScore = currentNode.gScore + c.length;
+                        if (newGScore < neighbor.gScore) {
+                            neighbor.cameFrom = c;
+                            neighbor.gScore = newGScore;
+                            neighbor.fScore = newGScore + h(neighbor);
+                            if (!open.contains(neighbor)) {
+                                open.add(neighbor);
+                            }
+                        }
+                        if (viewCanvas.animating) {
+                            viewCanvas.highlight(c.id, Color.MAGENTA);
+                        }
+                    }
+                }
+
+                Node currentNode = end;
+                while (currentNode != start) {
+                    end.path.add(0, currentNode.cameFrom.id);
+                    currentNode = nodes.get(currentNode.cameFrom.startNode);
                 }
             }
 
@@ -272,6 +316,10 @@ public class Navigator {
         }
     }
 
+    public void setAlgorithm(String algorithmChoice) {
+        this.algorithmChoice = algorithmChoice;
+    }
+
     private void updateScreen(int screenWidth, int screenHeight) {
         minLat = 1000;
         maxLat = -1000;
@@ -298,6 +346,10 @@ public class Navigator {
         waypointsMap = new HashMap<>();
     }
 
+    private double h(Node n) {
+        return 69 * Math.sqrt(Math.pow(n.latitude - end.latitude, 2) + Math.pow(n.longitude - end.longitude, 2));
+    }
+
     static class Waypoint {
         double latitude;
         double longitude;
@@ -308,30 +360,26 @@ public class Navigator {
         }
     }
 
-    static class Node implements Comparable<Node>{
+    static class Node {
         int id;
         double longitude;
         double latitude;
+        ArrayList<Connection> connections = new ArrayList<>();
+
+        // for Djikstra's
         double distance;
         boolean visited;
         ArrayList<Integer> path = new ArrayList<>();
-        ArrayList<Connection> connections = new ArrayList<>();
+
+        // for A*
+        double gScore; // cheapest path to node currently known
+        double fScore; // gScore + h(n)
+        Connection cameFrom; // to reconstruct path
 
         Node(int id, double longitude, double latitude) {
             this.id = id;
             this.longitude = longitude;
             this.latitude = latitude;
-        }
-
-        @Override
-        public int compareTo(Node n) {
-            if (this.distance - n.distance > 0) {
-                return 1;
-            } else if (this.distance - n.distance < 0)  {
-                return -1;
-            } else {
-                return 0;
-            }
         }
     }
 

@@ -26,6 +26,7 @@ public class ControlPanel extends JPanel {
         algorithmBox = new JComboBox<>();
         algorithmBox.addItem("Dijkstra's");
         algorithmBox.addItem("A*");
+        algorithmBox.addActionListener(new AlgorithmBoxListener());
         actionPanel.add(algorithmBox);
 
         JButton findPathButton = new JButton("Find Path");
@@ -90,6 +91,12 @@ public class ControlPanel extends JPanel {
             view.navigator.readFiles("RoadData/" + Objects.requireNonNull(chooseBox.getSelectedItem()).toString());
             view.navigator.clearPath();
             view.draw();
+        }
+    }
+
+    class AlgorithmBoxListener implements ActionListener {
+        public void actionPerformed(ActionEvent event) {
+            view.navigator.setAlgorithm(Objects.requireNonNull(algorithmBox.getSelectedItem()).toString());
         }
     }
 }
