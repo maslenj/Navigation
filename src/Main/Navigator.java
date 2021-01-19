@@ -212,8 +212,10 @@ public class Navigator {
     public void findPath() {
         pathFound = false;
         viewCanvas.draw();
+
         // make sure start and end nodes are set
         if (start != null && end != null) {
+            boolean searchFailed = true;
             // choose which algorithm to use
             if (algorithmChoice.equals("Dijkstra's")) {
                 // set all distances to infinity
@@ -233,7 +235,7 @@ public class Navigator {
                     frontier.add(n);
                 }
                 // do dijkstra's
-                while (!end.visited && !frontier.isEmpty()) {
+                while (!frontier.isEmpty()) {
                     Node chosen = frontier.poll();
                     chosen.visited = true;
                     // add new nodes to frontier
@@ -251,10 +253,17 @@ public class Navigator {
                     if (viewCanvas.animating) {
                         viewCanvas.highlight(chosen.path.get(chosen.path.size() - 1), Color.MAGENTA);
                     }
+
+                    if (chosen == end) {
+                        searchFailed = false;
+                        break;
+                    }
                 }
             } else {
                 // perform A* search
                 for (Node node: nodes.values()) {
+                    node.distance = 0;
+                    node.path.clear();
                     node.gScore = Double.POSITIVE_INFINITY;
                     node.fScore = Double.POSITIVE_INFINITY;
                 }
@@ -266,7 +275,10 @@ public class Navigator {
 
                 while (!open.isEmpty()) {
                     Node currentNode = open.poll();
-                    if (currentNode == end) break;
+                    if (currentNode == end) {
+                        searchFailed = false;
+                        break;
+                    }
                     for (Connection c: currentNode.connections) {
                         Node neighbor = nodes.get(c.endNode);
                         double newGScore = currentNode.gScore + c.length;
@@ -284,20 +296,26 @@ public class Navigator {
                     }
                 }
 
-                Node currentNode = end;
-                while (currentNode != start) {
-                    end.path.add(0, currentNode.cameFrom.id);
-                    currentNode = nodes.get(currentNode.cameFrom.startNode);
+                if (!searchFailed) {
+                    Node currentNode = end;
+                    while (currentNode != start) {
+                        end.path.add(0, currentNode.cameFrom.id);
+                        end.distance += currentNode.cameFrom.length;
+                        currentNode = nodes.get(currentNode.cameFrom.startNode);
+                    }
                 }
             }
 
+            if (searchFailed) {
+                end.distance = Double.POSITIVE_INFINITY;
+            }
 
             viewCanvas.draw();
             // path animation
             for (int linkID: end.path) {
                 viewCanvas.highlight(linkID, Color.RED);
                 try {
-                    Thread.sleep(25);
+                    Thread.sleep(500 / end.path.size());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -347,7 +365,7 @@ public class Navigator {
     }
 
     private double h(Node n) {
-        return 60 * Math.sqrt(Math.pow(n.latitude - end.latitude, 2) + Math.pow(n.longitude - end.longitude, 2));
+        return 55 * Math.sqrt(Math.pow(n.latitude - end.latitude, 2) + Math.pow(n.longitude - end.longitude, 2));
     }
 
     static class Waypoint {
